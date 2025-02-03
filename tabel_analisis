@@ -1,0 +1,54 @@
+create or replace table `kimia_farma.tabel_analisis` as
+select 
+  t.transaction_id,
+  any_value(t.date) date,
+  any_value(t.branch_id) branch_id,
+  any_value(kc.branch_name) branch_name,
+  any_value(kc.kota) kota,
+  any_value(kc.provinsi) provinsi,
+  any_value(kc.rating) rating_cabang,
+  any_value(t.customer_name) customer_name,
+  any_value(t.product_id) product_id,
+  any_value(p.product_name) product_name,
+  any_value(p.price) actual_price,
+  any_value(t.discount_percentage) discount_percentage,
+  max(
+    case
+      when p.price <= 50000 
+        then 10
+      when p.price > 50000 and p.price <= 100000 
+        then 15
+      when p.price > 100000 and p.price <= 300000 
+        then 20
+      when p.price > 300000 and p.price <= 500000 
+        then 25
+      else 30
+    end
+  ) persentase_gross_laba,
+  round(max(p.price) * (1 - max(t.discount_percentage) / 100), 0) nett_sales,
+  round(
+    (max(p.price) * (1 - max(t.discount_percentage) / 100)) * 
+    max(
+      case
+        when p.price <= 50000 
+          then 0.10
+        when p.price > 50000 and p.price <= 100000 
+          then 0.15
+        when p.price > 100000 and p.price <= 300000 
+          then 0.20
+        when p.price > 300000 and p.price <= 500000 
+          then 0.25
+        else 0.30
+      end
+    ), 0
+  ) nett_profit,
+  max(t.rating) rating_transaksi
+from 
+  `kimia_farma.kf_final_transaction` t
+left join `kimia_farma.kf_product` p 
+  on t.product_id = p.product_id
+left join `kimia_farma.kf_kantor_cabang` kc 
+  on t.branch_id = kc.branch_id
+left join `kimia_farma.kf_inventory` i 
+  on t.branch_id = i.branch_id and t.product_id = i.product_id
+group by t.transaction_id;
